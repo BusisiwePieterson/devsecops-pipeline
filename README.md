@@ -1,5 +1,7 @@
 # devsecops-pipeline
 
+![images](images/0_qpYyrWiXHCZRtAAn.png)
+
 
 Step 1: Launch EC2 (Ubuntu 22.04):
 
