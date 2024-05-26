@@ -405,21 +405,87 @@ You can access Prometheus in a web browser using your server's IP and port 9090:
 
 ### Installing Node Exporter
 
+Create a system user for Node Exporter and download Node Exporter:
+
+```
+sudo useradd --system --no-create-home --shell /bin/false node_exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+```
+
 ![images](images/Screenshot_59.png)
+
+Extract Node Exporter files, move the binary, and clean up:
+
+```
+tar -xvf node_exporter-1.6.1.linux-amd64.tar.gz
+sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
+rm -rf node_exporter*
+```
 
 ![images](images/Screenshot_60.png)
 
+Add the following content to the `node_exporter.service` file:
+
+Replace `--collector.logind` with any additional flags as needed.
+
+Enable and start Node Exporter:
+
 ![images](images/Screenshot_61.png)
+
+Enable and start Node Exporter:
+
+```
+sudo systemctl enable node_exporter
+sudo systemctl start node_exporter
+```
+
+Verify the Node Exporter's status:
+
+```
+sudo systemctl status node_exporter
+```
 
 ![images](images/Screenshot_62.png)
 
+You can access Node Exporter metrics in Prometheus.
+
+#### Configure Prometheus Plugin Intergration
+
+Integrate Jenkins with Prometheus to monitor the CI/CD pipeline.
+
+**Prometheus Configuration:**
+
+To configure Prometheus to scrape metrics from Node Exporter and Jenkins, you need to modify the `prometheus.yml` file. Here is an example `prometheus.yml` configuration for your setup:
+
+Make sure to replace `<your-jenkins-ip>` and `<your-jenkins-port>` with the appropriate values for your Jenkins setup.
+
 ![images](images/Screenshot_63.png)
 
-![images](images/Screenshot_64.png)
+Check the validity of the configuration file:
+
+```
+promtool check config /etc/prometheus/prometheus.yml
+```
+
+Reload the Prometheus configuration without restarting:
+
+```
+curl -X POST http://localhost:9090/-/reload
+```
+
+You can access Prometheus targets at `http://<your-prometheus-ip>:9090/targets`
+
 
 ![images](images/Screenshot_65.png)
 
+Go to your Security Groups and open port **9091** for node-exporter
+
+![images](images/Screenshot_64.png)
+
+
 ![images](images/Screenshot_66.png)
+
+### Grafana Installation
 
 ![images](images/Screenshot_67.png)
 
