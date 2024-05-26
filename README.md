@@ -487,13 +487,69 @@ Go to your Security Groups and open port **9091** for node-exporter
 
 ### Grafana Installation
 
+Install Grafana on Ubuntu 22.04 and Set it up to Work with Prometheus
+
+Install Dependencies:
+
+First, ensure that all necessary dependencies are installed:
+```
+sudo apt-get update
+sudo apt-get install -y apt-transport-https software-properties-common
+```
+
+
+**Add the GPG key for Grafana:**
+
+```
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+```
+
 ![images](images/Screenshot_67.png)
+
+Open port `3000` for grafana
 
 ![images](images/Screenshot_68.png)
 
+**Add Grafana Repository:**
+
+Add the repository for Grafana stable releases:
+
+```
+echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+```
+
+Update the package list and install Grafana:
+
+```
+sudo apt-get update
+sudo apt-get -y install grafana
+```
+
 ![images](images/Screenshot_69.png)
 
+Enable and Start Grafana Service:
+
+To automatically start Grafana after a reboot, enable the service:
+
+```
+sudo systemctl enable grafana-server
+```
+
+Then, start Grafana:
+
+```
+sudo systemctl start grafana-server
+```
+
 ![images](images/Screenshot_70.png)
+
+Open a web browser and navigate to Grafana using your server's IP address. The default port for Grafana is 3000. `http://<your-server-ip>:3000`
+
+You'll be prompted to log in to Grafana. The default username is "admin," and the default password is also "admin."
+
+Change the Default Password:
+
+When you log in for the first time, Grafana will prompt you to change the default password for security reasons. Follow the prompts to set a new password.
 
 ![images](images/Screenshot_71.png)
 
