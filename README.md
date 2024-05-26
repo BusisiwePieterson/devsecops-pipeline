@@ -279,120 +279,131 @@ Now, run your Jenkins pipeline and monitor SonarQube status to ensure your code 
 
 Now, you have installed the Dependency-Check plugin, configured the tool, and added Docker-related plugins along with your DockerHub credentials in Jenkins. You can now proceed with configuring your Jenkins pipeline to include these tools and credentials in your CI/CD process.
 
-```
+![images](images/Screenshot_126.png)
 
-pipeline{
-    agent any
-    tools{
-        jdk 'jdk17'
-        nodejs 'node16'
-    }
-    environment {
-        SCANNER_HOME=tool 'sonar-scanner'
-    }
-    stages {
-        stage('clean workspace'){
-            steps{
-                cleanWs()
-            }
-        }
-        stage('Checkout from Git'){
-            steps{
-                git branch: 'main', url: 'https://github.com/N4si/DevSecOps-Project.git'
-            }
-        }
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
-                    -Dsonar.projectKey=Netflix '''
-                }
-            }
-        }
-        stage("quality gate"){
-           steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
-                }
-            } 
-        }
-        stage('Install Dependencies') {
-            steps {
-                sh "npm install"
-            }
-        }
-        stage('OWASP FS SCAN') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        stage('TRIVY FS SCAN') {
-            steps {
-                sh "trivy fs . > trivyfs.txt"
-            }
-        }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build --build-arg TMDB_V3_API_KEY=<yourapikey> -t netflix ."
-                       sh "docker tag netflix nasi101/netflix:latest "
-                       sh "docker push nasi101/netflix:latest "
-                    }
-                }
-            }
-        }
-        stage("TRIVY"){
-            steps{
-                sh "trivy image nasi101/netflix:latest > trivyimage.txt" 
-            }
-        }
-        stage('Deploy to container'){
-            steps{
-                sh 'docker run -d --name netflix -p 8081:80 nasi101/netflix:latest'
-            }
-        }
-    }
-}
-
-
-If you get docker login failed errorr
-
-sudo su
-sudo usermod -aG docker jenkins
-sudo systemctl restart jenkins
-
-
-
-
-```
-
-![images](images/Screenshot_46.png)
-
-![images](images/Screenshot_47.png)
-
-![images](images/Screenshot_48.png)
+Run your Jenkis pipeline again
 
 ![images](images/Screenshot_49.png)
 
+Now check DockerHub, you will see that the docker image was pushed to Docker Hub.
+
+
+![images](images/Screenshot_48.png)
+
+Access your application that is running in a Docker container by navigating to `<public-ip>:8081` in your browser.
+
 ![images](images/Screenshot_50.png)
 
-![images](images/Screenshot_51.png)
+
+   
+### Prometheus and Grafana for Monitoring
+
+Set up Prometheus and Grafana to monitor your application.
+
+First, create a dedicated Linux user for Prometheus and download Prometheus:
+
+```
+sudo useradd --system --no-create-home --shell /bin/false prometheus
+wget https://github.com/prometheus/prometheus/releases/download/v2.47.1/prometheus-2.47.1.linux-amd64.tar.gz
+```
+
+
 
 ![images](images/Screenshot_52.png)
 
+Extract Prometheus files, move them, and create directories:
+
+```
+tar -xvf prometheus-2.47.1.linux-amd64.tar.gz
+cd prometheus-2.47.1.linux-amd64/
+sudo mkdir -p /data /etc/prometheus
+sudo mv prometheus promtool /usr/local/bin/
+sudo mv consoles/ console_libraries/ /etc/prometheus/
+sudo mv prometheus.yml /etc/prometheus/prometheus.yml
+```
+
 ![images](images/Screenshot_53.png)
+
+Set ownership for directories:
+
+```
+sudo chown -R prometheus:prometheus /etc/prometheus/ /data/
+```
+
+Create a systemd unit configuration file for Prometheus:
+
+```
+sudo nano /etc/systemd/system/prometheus.service
+```
 
 ![images](images/Screenshot_54.png)
 
+Add the following content to the `prometheus.service` file:
+
+```
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/data \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.enable-lifecycle
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ![images](images/Screenshot_55.png)
+
+Here's a brief explanation of the key parts in this `prometheus.service` file:
+
+- `User` and `Group` specify the Linux user and group under which Prometheus will run.
+
+- `ExecStart` is where you specify the Prometheus binary path, the location of the configuration file (`prometheus.yml`), the storage directory, and other settings.
+
+- `web.listen-address` configures Prometheus to listen on all network interfaces on port 9090.
+
+- `web.enable-lifecycle` allows for management of Prometheus through API calls.
+
+Enable and start Prometheus:
+
+```
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+```
+Verify Prometheus's status:
+
+```
+sudo systemctl status prometheus
+```
 
 ![images](images/Screenshot_56.png)
 
+Go to your security groups and open port 9090 for Prometheus.
+
 ![images](images/Screenshot_57.png)
 
+You can access Prometheus in a web browser using your server's IP and port 9090:
+
+`http://<your-server-ip>:9090`
+
 ![images](images/Screenshot_58.png)
+
+### Installing Node Exporter
 
 ![images](images/Screenshot_59.png)
 
