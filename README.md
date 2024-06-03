@@ -2,6 +2,17 @@
 
 ![images](images/0_qpYyrWiXHCZRtAAn.png)
 
+This project aims to develop a robust and secure Continuous Integration/Continuous Deployment (CI/CD) pipeline that leverages several industry-standard tools to ensure high code quality, security, and operational efficiency. The pipeline integrates Jenkins, Trivy, SonarQube, ArgoCD, OWASP, Grafana, Prometheus, and email notifications to automate the build, test, and deployment processes while continuously monitoring and improving application performance and security.
+
+### Benefits
+- Improved Code Quality: Continuous integration of SonarQube ensures code quality standards.
+- Enhanced Security: Trivy and OWASP tools provide comprehensive security checks.
+- Automated Deployments: ArgoCD enables efficient and consistent application deployments.
+- Proactive Monitoring: Prometheus and Grafana offer real-time insights into system performance.
+Team Awareness: Email notifications keep the team informed about the pipeline status.
+
+##
+
 
 Step 1: Launch EC2 (Ubuntu 22.04):
 
@@ -609,27 +620,42 @@ That's it! You've successfully installed and set up Grafana to work with Prometh
 
 ![images](images/Screenshot_76.png)
 
-### Implement Notification Services:
+### Configure Prometheus Plugin Integration:
+
+Integrate Jenkins with Prometheus to monitor the CI/CD pipeline.
 
 ![images](images/Screenshot_77.png)
 
-![images](images/Screenshot_78.png)
+To configure Prometheus to scrape metrics from Jenkins, you need to modify the prometheus.yml file. 
+
 
 ![images](images/Screenshot_79.png)
 
-![images](images/Screenshot_80.png)
+Check the validity of the configuration file:
+```
+promtool check config /etc/prometheus/prometheus.yml
+```
+Then Reload the Prometheus configuration without restarting:
 
+```
+curl -X POST http://localhost:9090/-/reload
+```
 ![images](images/Screenshot_81.png)
+
+You will now see that your Jenkins pipeline is a Target
 
 ![images](images/Screenshot_82.png)
 
+Import  dashboard for Jenkins
+
 ![images](images/Screenshot_83.png)
 
-![images](images/Screenshot_84.png)
+You should now be able to monitor your Jenkins pipeline.
 
-![images](images/Screenshot_85.png)
+### Notification
 
-![images](images/Screenshot_86.png)
+Our program works well; however, we manually have to check Jenkins to know the status of our pipeline, which is not very ideal. To improve this process, we will now add email notifications to our project. 
+
 
 ![images](images/Screenshot_87.png)
 
@@ -658,36 +684,138 @@ That's it! You've successfully installed and set up Grafana to work with Prometh
 ![images](images/Screenshot_99.png)
 
 ## Kubernetes Cluster with Nodegroups
+
+In this phase, you'll set up a Kubernetes cluster with node groups. This will provide a scalable environment to deploy and manage your applications.
+
+First you will need to install awscli and eksctl
+
+To install the AWS CLI, run the following commands.
+
+```
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+Install and Setup eksctl on Ubuntu Server
+
+```
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+
+sudo mv /tmp/eksctl /usr/local/bin
+```
+
+
 ![images](images/Screenshot_100.png)
+
+Now that awscli is installed, you will need to create an AWS access key ID and secret access key in order to interact with AWS resources.
 
 ![images](images/Screenshot_101.png)
 
+Now it is time to create our cluster
+
 ![images](images/Screenshot_102.png)
+
+You can confirm that the cluster has been created by checking your AWS console.
 
 ![images](images/Screenshot_103.png)
 
+Next, we need to install and Setup kubectl on Ubuntu Server.
+
+```
+sudo curl --silent --location -o /usr/local/bin/kubectl   https://s3.us-west-2.amazonaws.com/amazon-eks/1.22.6/2022-03-09/bin/linux/amd64/kubectl
+
+sudo chmod +x /usr/local/bin/kubectl 
+
+kubectl version --short --client
+```
+
 ![images](images/Screenshot_104.png)
+
+Create a namespace `kubectl create namespace argocd`
 
 ![images](images/Screenshot_105.png)
 
+### Monitor Kubernetes with Prometheus
 
-![images](images/Screenshot_106.png)
+Prometheus is a powerful monitoring and alerting toolkit, and you'll use it to monitor your Kubernetes cluster. Additionally, you'll install the node exporter using Helm to collect metrics from your cluster nodes.
 
-![images](images/Screenshot_107.png)
+#### Install Node Exporter using Helm
 
-![images](images/Screenshot_108.png)
+To begin monitoring your Kubernetes cluster, you'll install the Prometheus Node Exporter. This component allows you to collect system-level metrics from your cluster nodes. Here are the steps to install the Node Exporter using Helm:
+
+1. Add the Prometheus Community Helm repository:
+
+
+
+```
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+
+2. Create a Kubernetes namespace for the Node Exporter:
+
+```
+kubectl create namespace prometheus-node-exporter
+```
+
+3. Install the Node Exporter using Helm:
+
+```
+helm install prometheus-node-exporter prometheus-community/prometheus-node-exporter --namespace prometheus-node-exporter
+```
 
 ![images](images/Screenshot_109.png)
 
+Now see if the node exporter namespace has been created.
+
 ![images](images/Screenshot_110.png)
 
+Add a Job to Scrape Metrics on nodeip:9001/metrics in prometheus.yml:
+
+Update your Prometheus configuration (prometheus.yml) to add a new job for scraping metrics from nodeip:9001/metrics. You can do this by adding the following configuration to your prometheus.yml file:
+
+```
+  - job_name: 'Netflix'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['node1Ip:9100']
+```
+
+Replace 'your-job-name' with a descriptive name for your job. The static_configs section specifies the targets to scrape metrics from, and in this case, it's set to nodeip:9001.
+
+Don't forget to reload or restart Prometheus to apply these changes to your configuration.
+
+To deploy an application with ArgoCD, you can follow these steps, which I'll outline in Markdown format:
+
+### Deploy Application with ArgoCD
+
+1. Install ArgoCD:
+
+You can install ArgoCD on your Kubernetes cluster by following the instructions provided in the EKS Workshop documentation https://archive.eksworkshop.com/intermediate/290_argocd/install/.
+
+
+
 ![images](images/Screenshot_111.png)
+
+Get your password for ArgoCD
 
 ![images](images/Screenshot_112.png)
 
 ### Deploy Application with ArgoCD
 
+2. Set Your GitHub Repository as a Source:
+
+After installing ArgoCD, you need to set up your GitHub repository as a source for your application deployment. This typically involves configuring the connection to your repository and defining the source for your ArgoCD application. The specific steps will depend on your setup and requirements.
+
 ![images](images/Screenshot_113.png)
+
+3. Create an ArgoCD Application:
+
+- name: Set the name for your application.
+destination: Define the destination where your application should be deployed.
+- project: Specify the project the application belongs to.
+- source: Set the source of your application, including the GitHub repository URL, revision, and the path to the application within the repository.
+- syncPolicy: Configure the sync policy, including automatic syncing, pruning, and self-healing.
 
 ![images](images/Screenshot_114.png)
 
@@ -704,12 +832,28 @@ That's it! You've successfully installed and set up Grafana to work with Prometh
 
 ![images](images/Screenshot_120.png)
 
+Access your Application
+
+To Access the app make sure port 30007 is open in your security group and then open a new tab paste your `NodeIP:30007`, your app should be running.
+
+
 ![images](images/Screenshot_121.png)
 
+To monitor our application open port 9100
+
+
 ![images](images/Screenshot_122.png)
+
+Next, configure Prometheus to scrape metrics from Kubernetes, you need to modify the prometheus.yml file. 
 
 ![images](images/Screenshot_123.png)
 
 ![images](images/Screenshot_124.png)
+
+
+### Cleanup AWS EC2 Instances:
+Terminate AWS EC2 instances that are no longer needed.
+
+## THE END!!
 
 
